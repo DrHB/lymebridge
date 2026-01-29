@@ -64,13 +64,6 @@ sudo chmod +x /usr/local/bin/lymebridge
 
 echo ""
 echo "Installation complete!"
-echo ""
-echo "Next steps:"
-echo "  1. Run: lymebridge setup"
-echo "  2. Grant Full Disk Access to lymebridge in System Preferences > Privacy & Security"
-echo "  3. Run the daemon: lymebridge"
-echo ""
-echo "To connect a Claude Code or Codex session:"
-echo "  lymebridge connect imessage work1"
-echo "  lymebridge connect telegram api"
-echo ""
+
+# Run setup automatically
+/usr/local/bin/lymebridge setup

@@ -45,14 +45,16 @@ func printHelp() {
 }
 
 func runSetup() {
-    print("lymebridge setup")
-    print("================")
+    print("")
+    print("═══════════════════════════════════════")
+    print("         lymebridge setup")
+    print("═══════════════════════════════════════")
     print("")
     print("Which channel do you want to configure?")
-    print("1. iMessage (recommended for local use)")
-    print("2. Telegram (for remote access)")
+    print("  1. iMessage (recommended for local use)")
+    print("  2. Telegram (for remote access)")
     print("")
-    print("Enter choice (1 or 2):")
+    print("Enter choice (1 or 2): ", terminator: "")
 
     guard let choice = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) else {
         print("Error: No input")
@@ -60,28 +62,23 @@ func runSetup() {
     }
 
     let config: Config
+    var needsFullDiskAccess = false
 
     switch choice {
     case "1":
-        print("")
-        print("Enter your Apple ID (email or phone for iMessage):")
-        guard let appleId = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !appleId.isEmpty else {
-            print("Error: Apple ID required")
-            exit(1)
-        }
+        let appleId = promptForAppleId()
         config = Config.createDefault(appleId: appleId)
+        needsFullDiskAccess = true
 
     case "2":
         print("")
-        print("Enter your Telegram bot token (from @BotFather):")
+        print("Enter your Telegram bot token (from @BotFather): ", terminator: "")
         guard let botToken = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines),
               !botToken.isEmpty else {
             print("Error: Bot token required")
             exit(1)
         }
-        print("")
-        print("Enter your Telegram chat ID:")
+        print("Enter your Telegram chat ID: ", terminator: "")
         guard let chatId = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines),
               !chatId.isEmpty else {
             print("Error: Chat ID required")
@@ -97,17 +94,153 @@ func runSetup() {
     do {
         try config.save()
         print("")
-        print("Config saved to: \(Config.configPath.path)")
-        print("")
-        print("Next steps:")
-        if choice == "1" {
-            print("1. Grant Full Disk Access to lymebridge in System Preferences")
-            print("2. Grant Automation access for Messages when prompted")
-        }
-        print("3. Run: lymebridge")
+        print("✓ Config saved")
     } catch {
-        print("Error saving config: \(error)")
+        print("✗ Error saving config: \(error)")
         exit(1)
+    }
+
+    if needsFullDiskAccess {
+        setupFullDiskAccess()
+    }
+
+    print("")
+    print("═══════════════════════════════════════")
+    print("           Ready to Run")
+    print("═══════════════════════════════════════")
+    print("")
+    print("To start the daemon:")
+    print("  lymebridge")
+    print("")
+    print("To connect a Claude Code session:")
+    print("  lymebridge connect imessage work1")
+    print("")
+}
+
+func promptForAppleId() -> String {
+    print("")
+    print("How is your Apple ID registered?")
+    print("  1. Email address")
+    print("  2. Phone number")
+    print("")
+    print("Enter choice (1 or 2): ", terminator: "")
+
+    guard let idType = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+        print("Error: No input")
+        exit(1)
+    }
+
+    switch idType {
+    case "1":
+        print("")
+        print("Enter your email address: ", terminator: "")
+        guard let email = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !email.isEmpty else {
+            print("Error: Email required")
+            exit(1)
+        }
+        print("")
+        print("✓ Apple ID: \(email)")
+        return email
+
+    case "2":
+        print("")
+        print("Country code (e.g., 1 for US, 44 for UK): ", terminator: "")
+        guard let countryCode = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !countryCode.isEmpty else {
+            print("Error: Country code required")
+            exit(1)
+        }
+        print("Phone number: ", terminator: "")
+        guard let phone = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !phone.isEmpty else {
+            print("Error: Phone number required")
+            exit(1)
+        }
+        let cleanCode = countryCode.replacingOccurrences(of: "+", with: "")
+        let cleanPhone = phone.replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "-", with: "")
+            .replacingOccurrences(of: "(", with: "")
+            .replacingOccurrences(of: ")", with: "")
+        let fullNumber = "+\(cleanCode)\(cleanPhone)"
+        print("")
+        print("✓ Apple ID: \(fullNumber)")
+        return fullNumber
+
+    default:
+        print("Invalid choice")
+        exit(1)
+    }
+}
+
+func checkFullDiskAccess() -> Bool {
+    let messagesDb = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Messages/chat.db")
+    return FileManager.default.isReadableFile(atPath: messagesDb.path)
+}
+
+func setupFullDiskAccess() {
+    print("")
+    print("───────────────────────────────────────")
+    print("       Granting Permissions")
+    print("───────────────────────────────────────")
+    print("")
+    print("lymebridge needs Full Disk Access to read messages.")
+    print("")
+
+    if checkFullDiskAccess() {
+        print("✓ Full Disk Access: already granted")
+        return
+    }
+
+    var attempts = 0
+    while !checkFullDiskAccess() {
+        attempts += 1
+
+        print("Opening System Settings...")
+        print("")
+        print("Steps:")
+        print("  1. Click the + button")
+        print("  2. Press Cmd+Shift+G and type: /usr/local/bin")
+        print("  3. Select 'lymebridge' and click Open")
+        print("  4. Ensure the toggle is ON")
+        print("")
+
+        let task = Process()
+        task.launchPath = "/usr/bin/open"
+        task.arguments = ["x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"]
+        try? task.run()
+        task.waitUntilExit()
+
+        print("Press Enter when done...", terminator: "")
+        _ = readLine()
+        print("")
+        print("Checking permissions...")
+        print("")
+
+        if checkFullDiskAccess() {
+            print("✓ Full Disk Access: granted")
+            return
+        }
+
+        print("✗ Full Disk Access: not granted")
+        print("")
+        print("Would you like to:")
+        print("  1. Try again (re-open Settings)")
+        print("  2. Skip for now (you can grant later)")
+        print("")
+        print("Enter choice (1 or 2): ", terminator: "")
+
+        guard let retry = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            return
+        }
+
+        if retry != "1" {
+            print("")
+            print("Skipped. Remember to grant Full Disk Access before running lymebridge.")
+            return
+        }
+        print("")
     }
 }
 
