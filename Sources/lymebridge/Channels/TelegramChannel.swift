@@ -52,8 +52,7 @@ final class TelegramChannel: MessageChannel {
 
         let body: [String: Any] = [
             "chat_id": recipient.isEmpty ? chatId : recipient,
-            "text": text,
-            "parse_mode": "HTML"
+            "text": text
         ]
 
         guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
