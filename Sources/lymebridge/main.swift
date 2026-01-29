@@ -199,11 +199,8 @@ func setupFullDiskAccess() {
 
         print("Opening System Settings...")
         print("")
-        print("Steps:")
-        print("  1. Click the + button")
-        print("  2. Press Cmd+Shift+G and type: /usr/local/bin")
-        print("  3. Select 'lymebridge' and click Open")
-        print("  4. Ensure the toggle is ON")
+        print("Find 'Terminal' (or 'iTerm') in the list and toggle it ON.")
+        print("(lymebridge inherits permissions from your terminal)")
         print("")
 
         let task = Process()
