@@ -1,6 +1,6 @@
 # lymebridge
 
-Bridge Telegram to Claude Code via tmux. Dead simple.
+Bridge Telegram to Claude Code via tmux. Send messages AND receive responses.
 
 ## Install
 
@@ -8,7 +8,7 @@ Bridge Telegram to Claude Code via tmux. Dead simple.
 curl -fsSL https://raw.githubusercontent.com/DrHB/lymebridge/main/install.sh | bash
 ```
 
-That's it! The installer auto-installs `jq` and `tmux` via Homebrew if needed.
+The installer auto-installs `jq` and `tmux` via Homebrew if needed (macOS only).
 
 ## Setup
 
@@ -23,37 +23,62 @@ This will:
 
 ## Usage
 
-**Start Claude Code inside tmux:**
+**1. Start Claude Code inside tmux:**
 ```bash
 tmux new -s claude
 claude
 ```
 
-**In Claude Code, start the bridge:**
-```
-lymebridge bridge
+**2. From a separate terminal, start the bridge:**
+```bash
+lymebridge bridge claude
 ```
 
-**Now send messages via Telegram** - they appear as input to Claude Code!
+**3. Send messages via Telegram** - they appear as input to Claude Code, and Claude's responses are sent back to you!
 
-Walk away and continue working via Telegram.
+Walk away from your computer and continue working via Telegram.
 
 ## How it works
 
-1. `lymebridge bridge` polls your Telegram bot
-2. When you send a message, it runs `tmux send-keys` to inject it
-3. The message appears in Claude Code as if you typed it
+```
+Telegram  <-->  lymebridge  <-->  Claude Code (in tmux)
+```
 
-That's it. ~150 lines of bash. No daemon, no complexity.
+1. **Input**: `lymebridge bridge` polls your Telegram bot for messages
+2. **Inject**: When you send a message, it uses `tmux send-keys` to inject it into Claude Code
+3. **Capture**: It monitors the tmux pane for Claude's responses
+4. **Reply**: New responses are sent back to your Telegram chat
 
 ## Commands
 
 ```bash
-lymebridge setup    # Configure Telegram bot
-lymebridge bridge   # Bridge Telegram to current tmux pane
-lymebridge version  # Show version
-lymebridge help     # Show help
+lymebridge setup            # Configure Telegram bot (one-time)
+lymebridge bridge <session> # Bridge Telegram to named tmux session
+lymebridge bridge           # Bridge to current tmux pane (when run inside tmux)
+lymebridge version          # Show version
+lymebridge help             # Show help
 ```
+
+## Example
+
+```bash
+# Terminal 1: Start Claude in tmux
+tmux new -s dev
+claude
+
+# Terminal 2: Start the bridge
+lymebridge bridge dev
+
+# Now on Telegram:
+# You: "help me write a python hello world"
+# Bot: "Here's a simple Python hello world..."
+```
+
+## Requirements
+
+- macOS (uses tmux)
+- Homebrew (for auto-installing dependencies)
+- Telegram account and bot token
 
 ## License
 
