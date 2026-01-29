@@ -17,10 +17,12 @@
 - Telegram channel (simple HTTP polling, no SDK)
 - `[session-name]` prefix for all responses (consistent UX)
 - Multi-session support with `@session` routing
+- **Works with Claude Code AND OpenAI Codex CLI** (tool-agnostic)
 
 **Out of scope (future):**
 - Discord, Slack (can add later using same MessageChannel protocol)
 - Custom sender identities per session
+- Deep integration hooks (v1 uses generic bridge client)
 
 ---
 
