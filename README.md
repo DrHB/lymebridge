@@ -1,16 +1,6 @@
 # lymebridge
 
-Bridge iMessage and Telegram to Claude Code and Codex CLI terminal sessions.
-
-Send messages via iMessage or Telegram → they appear as input in your AI session → responses come back to your messaging app.
-
-## Features
-
-- **Multi-channel support**: iMessage (local) and Telegram (remote)
-- **Multi-session**: Run multiple AI sessions, route with `@session-name`
-- **Tool-agnostic**: Works with Claude Code, Codex CLI, or any terminal AI
-- **Zero network for iMessage**: All local, nothing leaves your Mac
-- **Prefix-based responses**: `[session-name] response text`
+Bridge Telegram to Claude Code sessions.
 
 ## Install
 
@@ -18,129 +8,60 @@ Send messages via iMessage or Telegram → they appear as input in your AI sessi
 curl -fsSL https://raw.githubusercontent.com/DrHB/lymebridge/main/install.sh | bash
 ```
 
-Or build from source:
+## Setup
 
 ```bash
-git clone https://github.com/DrHB/lymebridge.git
-cd lymebridge && ./install.sh
-```
-
-## Quick Start
-
-```bash
-# Setup (choose iMessage or Telegram)
 lymebridge setup
-
-# For iMessage: Grant permissions in System Preferences:
-# - Full Disk Access for lymebridge
-# - Automation access for Messages.app
-
-# Start daemon
-lymebridge
 ```
+
+This will:
+1. Ask for your Telegram bot token (get one from [@BotFather](https://t.me/botfather))
+2. Wait for you to message your bot
+3. Auto-detect your chat ID
 
 ## Usage
 
-### 1. Start the daemon
-
+**Terminal 1** - Start the daemon:
 ```bash
 lymebridge
 ```
 
-### 2. Connect your AI session
-
-In your terminal with Claude Code or Codex:
-
+**Terminal 2** - Connect a Claude Code session:
 ```bash
-lymebridge connect imessage work1
-# or
-lymebridge connect telegram api-dev
+lymebridge connect work1
 ```
 
-### 3. Send messages
+Now message your Telegram bot. Messages appear in Terminal 2.
 
-**Via iMessage (to yourself):**
+To route to a specific session, prefix with `@name`:
 ```
-@work1 what files did we edit?
-```
-
-**Via Telegram (to your bot):**
-```
-@api-dev check the logs
-```
-
-### 4. Receive responses
-
-```
-[work1] We edited 3 files: main.swift, Config.swift...
-[api-dev] No errors found in the logs.
+@work1 what files are in src/
 ```
 
 ## Multi-Session
 
 ```bash
 # Terminal 1
-lymebridge connect imessage work1
+lymebridge connect work1
 
 # Terminal 2
-lymebridge connect telegram api-dev
+lymebridge connect api-dev
 ```
 
-**Routing:**
-- `@work1 message` → routes to Terminal 1 (via iMessage)
-- `@api-dev message` → routes to Terminal 2 (via Telegram)
-- `message` (no prefix) → routes to most recently active session
+Route messages:
+- `@work1 message` → Terminal 1
+- `@api-dev message` → Terminal 2
+- `message` (no prefix) → most recent session
 
 ## Commands
 
 ```bash
-lymebridge                            # Run daemon (default)
-lymebridge daemon                     # Run daemon (explicit)
-lymebridge setup                      # Interactive setup
-lymebridge connect <channel> <name>   # Connect a session
-lymebridge version                    # Show version
-lymebridge help                       # Show help
+lymebridge              # Run daemon
+lymebridge setup        # Interactive setup
+lymebridge connect <n>  # Connect session named <n>
+lymebridge version      # Show version
+lymebridge help         # Show help
 ```
-
-## Configuration
-
-Config file: `~/.config/lymebridge/config.json`
-
-```json
-{
-  "socketPath": "/tmp/lymebridge.sock",
-  "logLevel": "info",
-  "channels": {
-    "imessage": {
-      "enabled": true,
-      "appleId": "your@appleid.com"
-    },
-    "telegram": {
-      "enabled": false,
-      "botToken": "123456:ABC...",
-      "chatId": "your-chat-id"
-    }
-  }
-}
-```
-
-## Requirements
-
-- macOS 13+
-- For iMessage:
-  - Full Disk Access permission
-  - Automation permission for Messages.app
-- For Telegram:
-  - Bot token from @BotFather
-  - Your chat ID
-
-## Security
-
-- **Zero network (iMessage)**: All communication is local
-- **Zero dependencies**: Pure Swift, no third-party code
-- **Memory-only**: Messages are never written to disk by the daemon
-- **Socket hardened**: Permissions 0600, owner-only access
-- **Open source**: Fully auditable
 
 ## License
 
