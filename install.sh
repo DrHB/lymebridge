@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+REPO="DrHB/lymebridge"
+VERSION="latest"
+
 echo "Installing lymebridge..."
 echo ""
 
@@ -10,35 +13,55 @@ if [[ "$(uname)" != "Darwin" ]]; then
     exit 1
 fi
 
-# Build from source
-if [[ -f "Package.swift" ]]; then
-    echo "Building from source..."
-    swift build -c release
-    BINARY=".build/release/lymebridge"
+# Detect architecture
+ARCH=$(uname -m)
+if [[ "$ARCH" == "arm64" ]]; then
+    BINARY_NAME="lymebridge-macos-arm64"
+elif [[ "$ARCH" == "x86_64" ]]; then
+    BINARY_NAME="lymebridge-macos-x86_64"
 else
-    echo "Error: Run from lymebridge directory"
+    echo "Error: Unsupported architecture: $ARCH"
     exit 1
+fi
+
+# Try to download pre-built binary
+DOWNLOAD_URL="https://github.com/$REPO/releases/$VERSION/download/$BINARY_NAME"
+TEMP_BINARY="/tmp/lymebridge-$$"
+
+echo "Downloading lymebridge for $ARCH..."
+if curl -fsSL "$DOWNLOAD_URL" -o "$TEMP_BINARY" 2>/dev/null; then
+    chmod +x "$TEMP_BINARY"
+else
+    echo "Pre-built binary not available, building from source..."
+
+    # Check if we're in the source directory
+    if [[ -f "Package.swift" ]]; then
+        swift build -c release
+        cp ".build/release/lymebridge" "$TEMP_BINARY"
+    else
+        echo "Error: Could not download binary and not in source directory"
+        echo "Clone the repo and run install.sh from there:"
+        echo "  git clone https://github.com/$REPO.git"
+        echo "  cd lymebridge && ./install.sh"
+        exit 1
+    fi
 fi
 
 # Install binary
 echo "Installing to /usr/local/bin..."
 sudo mkdir -p /usr/local/bin
-sudo cp "$BINARY" /usr/local/bin/lymebridge
+sudo mv "$TEMP_BINARY" /usr/local/bin/lymebridge
 sudo chmod +x /usr/local/bin/lymebridge
-
-# Install LaunchAgent
-echo "Installing LaunchAgent..."
-mkdir -p ~/Library/LaunchAgents
-cp com.lymebridge.daemon.plist ~/Library/LaunchAgents/
 
 echo ""
 echo "Installation complete!"
 echo ""
 echo "Next steps:"
 echo "  1. Run: lymebridge setup"
-echo "  2. Grant Full Disk Access in System Preferences > Privacy & Security"
-echo "  3. Start daemon: launchctl load ~/Library/LaunchAgents/com.lymebridge.daemon.plist"
-echo "     Or run directly: lymebridge"
+echo "  2. Grant Full Disk Access to lymebridge in System Preferences > Privacy & Security"
+echo "  3. Run the daemon: lymebridge"
 echo ""
 echo "To connect a Claude Code or Codex session:"
-echo "  ./bridge-client.sh imessage work1"
+echo "  lymebridge connect imessage work1"
+echo "  lymebridge connect telegram api"
+echo ""

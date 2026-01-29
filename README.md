@@ -12,14 +12,22 @@ Send messages via iMessage or Telegram → they appear as input in your AI sessi
 - **Zero network for iMessage**: All local, nothing leaves your Mac
 - **Prefix-based responses**: `[session-name] response text`
 
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DrHB/lymebridge/main/install.sh | bash
+```
+
+Or build from source:
+
+```bash
+git clone https://github.com/DrHB/lymebridge.git
+cd lymebridge && ./install.sh
+```
+
 ## Quick Start
 
 ```bash
-# Clone and install
-git clone https://github.com/yourusername/lymebridge.git
-cd lymebridge
-./install.sh
-
 # Setup (choose iMessage or Telegram)
 lymebridge setup
 
@@ -44,9 +52,9 @@ lymebridge
 In your terminal with Claude Code or Codex:
 
 ```bash
-./bridge-client.sh imessage work1
+lymebridge connect imessage work1
 # or
-./bridge-client.sh telegram api-dev
+lymebridge connect telegram api-dev
 ```
 
 ### 3. Send messages
@@ -72,16 +80,27 @@ In your terminal with Claude Code or Codex:
 
 ```bash
 # Terminal 1
-./bridge-client.sh imessage work1
+lymebridge connect imessage work1
 
 # Terminal 2
-./bridge-client.sh telegram api-dev
+lymebridge connect telegram api-dev
 ```
 
 **Routing:**
 - `@work1 message` → routes to Terminal 1 (via iMessage)
 - `@api-dev message` → routes to Terminal 2 (via Telegram)
 - `message` (no prefix) → routes to most recently active session
+
+## Commands
+
+```bash
+lymebridge                            # Run daemon (default)
+lymebridge daemon                     # Run daemon (explicit)
+lymebridge setup                      # Interactive setup
+lymebridge connect <channel> <name>   # Connect a session
+lymebridge version                    # Show version
+lymebridge help                       # Show help
+```
 
 ## Configuration
 

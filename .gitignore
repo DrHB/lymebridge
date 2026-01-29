@@ -1,0 +1,14 @@
+# Build artifacts
+.build/
+.swiftpm/
+
+# macOS
+.DS_Store
+
+# IDE
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+
+# Design documents (keep local only)
+docs/plans/
