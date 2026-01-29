@@ -34,17 +34,26 @@ if curl -fsSL "$DOWNLOAD_URL" -o "$TEMP_BINARY" 2>/dev/null; then
 else
     echo "Pre-built binary not available, building from source..."
 
-    # Check if we're in the source directory
-    if [[ -f "Package.swift" ]]; then
-        swift build -c release
-        cp ".build/release/lymebridge" "$TEMP_BINARY"
-    else
-        echo "Error: Could not download binary and not in source directory"
-        echo "Clone the repo and run install.sh from there:"
-        echo "  git clone https://github.com/$REPO.git"
-        echo "  cd lymebridge && ./install.sh"
+    # Check for Swift
+    if ! command -v swift &>/dev/null; then
+        echo "Error: Swift not found. Install Xcode Command Line Tools:"
+        echo "  xcode-select --install"
         exit 1
     fi
+
+    # Clone to temp directory and build
+    TEMP_DIR="/tmp/lymebridge-build-$$"
+    echo "Cloning repository..."
+    git clone --depth 1 "https://github.com/$REPO.git" "$TEMP_DIR" 2>/dev/null
+    cd "$TEMP_DIR"
+
+    echo "Building (this may take a moment)..."
+    swift build -c release
+    cp ".build/release/lymebridge" "$TEMP_BINARY"
+
+    # Cleanup
+    cd /
+    rm -rf "$TEMP_DIR"
 fi
 
 # Install binary
