@@ -1,0 +1,195 @@
+#!/bin/bash
+set -e
+
+VERSION="0.3.0"
+CONFIG_FILE="$HOME/.config/lymebridge/config.json"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
+
+show_help() {
+    cat << EOF
+lymebridge v$VERSION - Bridge Telegram to Claude Code
+
+Usage:
+  lymebridge setup    Configure Telegram bot
+  lymebridge bridge   Bridge Telegram to current tmux pane
+  lymebridge version  Show version
+  lymebridge help     Show this help
+
+Quick start:
+  1. lymebridge setup
+  2. Start Claude Code in tmux: tmux new -s claude && claude
+  3. In Claude Code: lymebridge bridge
+  4. Send messages via Telegram!
+EOF
+}
+
+check_deps() {
+    for cmd in curl jq tmux; do
+        if ! command -v $cmd &> /dev/null; then
+            echo -e "${RED}Error: $cmd is required but not installed${NC}"
+            exit 1
+        fi
+    done
+}
+
+run_setup() {
+    echo ""
+    echo "═══════════════════════════════════════"
+    echo "         lymebridge setup"
+    echo "═══════════════════════════════════════"
+    echo ""
+    echo "Step 1: Create a Telegram bot"
+    echo "  1. Open Telegram and message @BotFather"
+    echo "  2. Send /newbot and follow the prompts"
+    echo "  3. Copy the bot token"
+    echo ""
+    read -p "Enter your bot token: " BOT_TOKEN
+
+    if [[ -z "$BOT_TOKEN" ]]; then
+        echo -e "${RED}Error: Bot token required${NC}"
+        exit 1
+    fi
+
+    echo ""
+    echo -e "${GREEN}✓ Token received${NC}"
+    echo ""
+    echo "Step 2: Link your Telegram account"
+    echo "  Open Telegram and send any message to your bot."
+    echo ""
+    echo -n "Waiting for your message"
+
+    CHAT_ID=""
+    TIMEOUT=120
+    START=$(date +%s)
+
+    while [[ -z "$CHAT_ID" ]]; do
+        NOW=$(date +%s)
+        ELAPSED=$((NOW - START))
+        if [[ $ELAPSED -gt $TIMEOUT ]]; then
+            echo ""
+            echo -e "${RED}Timeout waiting for message${NC}"
+            exit 1
+        fi
+
+        echo -n "."
+        RESPONSE=$(curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?timeout=1")
+        CHAT_ID=$(echo "$RESPONSE" | jq -r '.result[-1].message.chat.id // empty')
+
+        if [[ -z "$CHAT_ID" ]]; then
+            sleep 2
+        fi
+    done
+
+    echo " found!"
+    echo ""
+    echo -e "${GREEN}✓ Chat ID: $CHAT_ID${NC}"
+
+    mkdir -p "$(dirname "$CONFIG_FILE")"
+    cat > "$CONFIG_FILE" << EOF
+{
+  "botToken": "$BOT_TOKEN",
+  "chatId": "$CHAT_ID"
+}
+EOF
+
+    echo -e "${GREEN}✓ Config saved${NC}"
+    echo ""
+    echo "═══════════════════════════════════════"
+    echo "           Ready to Use"
+    echo "═══════════════════════════════════════"
+    echo ""
+    echo "Start Claude Code in tmux:"
+    echo "  tmux new -s claude"
+    echo "  claude"
+    echo ""
+    echo "Then run:"
+    echo "  lymebridge bridge"
+    echo ""
+}
+
+run_bridge() {
+    if [[ -z "$TMUX_PANE" ]]; then
+        echo -e "${RED}Error: Not running inside tmux${NC}"
+        echo ""
+        echo "Start Claude Code inside tmux first:"
+        echo "  tmux new -s claude"
+        echo "  claude"
+        echo "  # then run: lymebridge bridge"
+        exit 1
+    fi
+
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        echo -e "${RED}Error: Config not found. Run 'lymebridge setup' first.${NC}"
+        exit 1
+    fi
+
+    BOT_TOKEN=$(jq -r '.botToken' "$CONFIG_FILE")
+    CHAT_ID=$(jq -r '.chatId' "$CONFIG_FILE")
+
+    echo "lymebridge v$VERSION"
+    echo ""
+    echo "Bridging Telegram → tmux pane $TMUX_PANE"
+    echo "Send messages via Telegram - they appear as input here!"
+    echo "Press Ctrl+C to stop."
+    echo ""
+
+    trap 'echo ""; echo "Bridge stopped."; exit 0' INT
+
+    LAST_UPDATE_ID=0
+
+    while true; do
+        RESPONSE=$(curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=$((LAST_UPDATE_ID + 1))&timeout=30")
+
+        UPDATES=$(echo "$RESPONSE" | jq -c '.result[]?' 2>/dev/null)
+
+        while IFS= read -r update; do
+            [[ -z "$update" ]] && continue
+
+            UPDATE_ID=$(echo "$update" | jq -r '.update_id')
+            MSG_CHAT_ID=$(echo "$update" | jq -r '.message.chat.id // empty')
+            TEXT=$(echo "$update" | jq -r '.message.text // empty')
+
+            if [[ "$UPDATE_ID" -gt "$LAST_UPDATE_ID" ]]; then
+                LAST_UPDATE_ID=$UPDATE_ID
+            fi
+
+            [[ "$MSG_CHAT_ID" != "$CHAT_ID" ]] && continue
+            [[ -z "$TEXT" ]] && continue
+            [[ "$TEXT" == \[* ]] && continue
+
+            echo -e "${YELLOW}[telegram]${NC} ${TEXT:0:50}..."
+
+            tmux send-keys -t "$TMUX_PANE" -l "$TEXT"
+            tmux send-keys -t "$TMUX_PANE" Enter
+
+        done <<< "$UPDATES"
+    done
+}
+
+# Main
+check_deps
+
+case "${1:-}" in
+    setup)
+        run_setup
+        ;;
+    bridge)
+        run_bridge
+        ;;
+    version|--version|-v)
+        echo "lymebridge v$VERSION"
+        ;;
+    help|--help|-h|"")
+        show_help
+        ;;
+    *)
+        echo "Unknown command: $1"
+        show_help
+        exit 1
+        ;;
+esac
