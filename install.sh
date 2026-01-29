@@ -48,7 +48,7 @@ else
     cd "$TEMP_DIR"
 
     echo "Building (this may take a moment)..."
-    swift build -c release
+    swift build -c release --quiet 2>/dev/null
     cp ".build/release/lymebridge" "$TEMP_BINARY"
 
     # Cleanup

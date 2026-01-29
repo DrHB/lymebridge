@@ -149,7 +149,7 @@ func runConnect() {
     var addr = sockaddr_un()
     addr.sun_family = sa_family_t(AF_UNIX)
     let pathBytes = socketPath.utf8CString
-    withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
+    _ = withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
         ptr.withMemoryRebound(to: CChar.self, capacity: 104) { dest in
             pathBytes.withUnsafeBufferPointer { src in
                 memcpy(dest, src.baseAddress, min(src.count, 104))
@@ -192,7 +192,7 @@ func runConnect() {
     // Set stdin to non-blocking for interleaved I/O
     let stdinFd = FileHandle.standardInput.fileDescriptor
     let oldFlags = fcntl(stdinFd, F_GETFL, 0)
-    fcntl(stdinFd, F_SETFL, oldFlags | O_NONBLOCK)
+    _ = fcntl(stdinFd, F_SETFL, oldFlags | O_NONBLOCK)
 
     var connected = false
 

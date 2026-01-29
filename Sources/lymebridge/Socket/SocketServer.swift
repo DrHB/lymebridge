@@ -25,7 +25,7 @@ final class SocketServer {
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
         let pathBytes = path.utf8CString
-        withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
+        _ = withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
             ptr.withMemoryRebound(to: CChar.self, capacity: 104) { dest in
                 pathBytes.withUnsafeBufferPointer { src in
                     memcpy(dest, src.baseAddress, min(src.count, 104))
@@ -84,7 +84,7 @@ final class SocketServer {
         let clientFd = accept(serverFd, nil, nil)
         guard clientFd >= 0 else { return }
         let flags = fcntl(clientFd, F_GETFL, 0)
-        fcntl(clientFd, F_SETFL, flags | O_NONBLOCK)
+        _ = fcntl(clientFd, F_SETFL, flags | O_NONBLOCK)
         let session = Session(name: "_pending_\(clientFd)", channel: "unknown", fileDescriptor: clientFd)
         fdToSession[clientFd] = session
         print("[socket] New connection: fd=\(clientFd)")
