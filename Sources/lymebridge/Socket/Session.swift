@@ -2,13 +2,15 @@ import Foundation
 
 final class Session {
     let name: String
+    let channel: String           // "imessage", "telegram", etc.
     let fileDescriptor: Int32
     var lastActive: Date
 
     private var buffer: String = ""
 
-    init(name: String, fileDescriptor: Int32) {
+    init(name: String, channel: String, fileDescriptor: Int32) {
         self.name = name
+        self.channel = channel
         self.fileDescriptor = fileDescriptor
         self.lastActive = Date()
     }

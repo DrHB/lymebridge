@@ -85,7 +85,7 @@ final class SocketServer {
         guard clientFd >= 0 else { return }
         let flags = fcntl(clientFd, F_GETFL, 0)
         fcntl(clientFd, F_SETFL, flags | O_NONBLOCK)
-        let session = Session(name: "_pending_\(clientFd)", fileDescriptor: clientFd)
+        let session = Session(name: "_pending_\(clientFd)", channel: "unknown", fileDescriptor: clientFd)
         fdToSession[clientFd] = session
         print("[socket] New connection: fd=\(clientFd)")
     }
@@ -104,25 +104,25 @@ final class SocketServer {
             return
         }
         switch msg {
-        case .register(let name): registerSession(session, name: name)
+        case .register(let name, let channel): registerSession(session, name: name, channel: channel)
         case .response(let text): session.touch(); onResponse?(text, session)
         case .disconnect: disconnectSession(session)
         }
     }
 
-    private func registerSession(_ session: Session, name: String) {
+    private func registerSession(_ session: Session, name: String, channel: String) {
         if sessions[name] != nil {
             _ = session.send(.error(message: "Session name '\(name)' already taken"))
             return
         }
         fdToSession.removeValue(forKey: session.fileDescriptor)
-        let namedSession = Session(name: name, fileDescriptor: session.fileDescriptor)
+        let namedSession = Session(name: name, channel: channel, fileDescriptor: session.fileDescriptor)
         sessions[name] = namedSession
         fdToSession[session.fileDescriptor] = namedSession
         mostRecentSessionName = name
-        _ = namedSession.send(.ack)
+        _ = namedSession.send(.ack(channel: channel))
         onSessionRegistered?(namedSession)
-        print("[socket] Session registered: \(name)")
+        print("[socket] Session registered: \(name) (channel: \(channel))")
     }
 
     private func disconnectSession(_ session: Session) {
@@ -138,7 +138,7 @@ final class SocketServer {
         guard let session = sessions[name] else { return false }
         session.touch()
         mostRecentSessionName = name
-        return session.send(.message(text: text))
+        return session.send(.message(text: text, channel: session.channel))
     }
 
     func sendToMostRecent(text: String) -> Bool {

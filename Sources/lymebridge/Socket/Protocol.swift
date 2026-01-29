@@ -3,12 +3,12 @@ import Foundation
 // MARK: - Client -> Server Messages
 
 enum ClientMessage: Codable {
-    case register(name: String)
+    case register(name: String, channel: String)
     case response(text: String)
     case disconnect
 
     enum CodingKeys: String, CodingKey {
-        case type, name, text
+        case type, name, text, channel
     }
 
     init(from decoder: Decoder) throws {
@@ -18,7 +18,8 @@ enum ClientMessage: Codable {
         switch type {
         case "register":
             let name = try container.decode(String.self, forKey: .name)
-            self = .register(name: name)
+            let channel = try container.decodeIfPresent(String.self, forKey: .channel) ?? "imessage"
+            self = .register(name: name, channel: channel)
         case "response":
             let text = try container.decode(String.self, forKey: .text)
             self = .response(text: text)
@@ -32,9 +33,10 @@ enum ClientMessage: Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .register(let name):
+        case .register(let name, let channel):
             try container.encode("register", forKey: .type)
             try container.encode(name, forKey: .name)
+            try container.encode(channel, forKey: .channel)
         case .response(let text):
             try container.encode("response", forKey: .type)
             try container.encode(text, forKey: .text)
@@ -47,12 +49,12 @@ enum ClientMessage: Codable {
 // MARK: - Server -> Client Messages
 
 enum ServerMessage: Codable {
-    case message(text: String)
-    case ack
+    case message(text: String, channel: String)
+    case ack(channel: String)
     case error(message: String)
 
     enum CodingKeys: String, CodingKey {
-        case type, text, message
+        case type, text, message, channel
     }
 
     init(from decoder: Decoder) throws {
@@ -62,9 +64,11 @@ enum ServerMessage: Codable {
         switch type {
         case "message":
             let text = try container.decode(String.self, forKey: .text)
-            self = .message(text: text)
+            let channel = try container.decodeIfPresent(String.self, forKey: .channel) ?? "imessage"
+            self = .message(text: text, channel: channel)
         case "ack":
-            self = .ack
+            let channel = try container.decodeIfPresent(String.self, forKey: .channel) ?? "imessage"
+            self = .ack(channel: channel)
         case "error":
             let msg = try container.decode(String.self, forKey: .message)
             self = .error(message: msg)
@@ -76,11 +80,13 @@ enum ServerMessage: Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .message(let text):
+        case .message(let text, let channel):
             try container.encode("message", forKey: .type)
             try container.encode(text, forKey: .text)
-        case .ack:
+            try container.encode(channel, forKey: .channel)
+        case .ack(let channel):
             try container.encode("ack", forKey: .type)
+            try container.encode(channel, forKey: .channel)
         case .error(let msg):
             try container.encode("error", forKey: .type)
             try container.encode(msg, forKey: .message)
