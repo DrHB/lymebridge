@@ -64,6 +64,7 @@ sudo chmod +x /usr/local/bin/lymebridge
 
 echo ""
 echo "Installation complete!"
-
-# Run setup automatically
-/usr/local/bin/lymebridge setup
+echo ""
+echo "Run this to configure:"
+echo "  lymebridge setup"
+echo ""
