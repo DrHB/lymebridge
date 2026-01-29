@@ -61,11 +61,11 @@ final class Daemon {
             channelManager.register(channel)
         }
 
-        // Telegram (will be added later)
-        // if let tgConfig = config.channels.telegram, tgConfig.enabled {
-        //     let channel = TelegramChannel(botToken: tgConfig.botToken, chatId: tgConfig.chatId)
-        //     channelManager.register(channel)
-        // }
+        // Telegram
+        if let tgConfig = config.channels.telegram, tgConfig.enabled {
+            let channel = TelegramChannel(botToken: tgConfig.botToken, chatId: tgConfig.chatId)
+            channelManager.register(channel)
+        }
     }
 
     private func setupSocketCallbacks() {
