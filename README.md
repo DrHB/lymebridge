@@ -1,12 +1,14 @@
 # lymebridge
 
-Bridge Telegram to Claude Code sessions.
+Bridge Telegram to Claude Code via tmux. Dead simple.
 
 ## Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DrHB/lymebridge/main/install.sh | bash
 ```
+
+That's it! The installer auto-installs `jq` and `tmux` via Homebrew if needed.
 
 ## Setup
 
@@ -21,46 +23,36 @@ This will:
 
 ## Usage
 
-**Terminal 1** - Start the daemon:
+**Start Claude Code inside tmux:**
 ```bash
-lymebridge
+tmux new -s claude
+claude
 ```
 
-**Terminal 2** - Connect a Claude Code session:
-```bash
-lymebridge connect work1
+**In Claude Code, start the bridge:**
+```
+lymebridge bridge
 ```
 
-Now message your Telegram bot. Messages appear in Terminal 2.
+**Now send messages via Telegram** - they appear as input to Claude Code!
 
-To route to a specific session, prefix with `@name`:
-```
-@work1 what files are in src/
-```
+Walk away and continue working via Telegram.
 
-## Multi-Session
+## How it works
 
-```bash
-# Terminal 1
-lymebridge connect work1
+1. `lymebridge bridge` polls your Telegram bot
+2. When you send a message, it runs `tmux send-keys` to inject it
+3. The message appears in Claude Code as if you typed it
 
-# Terminal 2
-lymebridge connect api-dev
-```
-
-Route messages:
-- `@work1 message` → Terminal 1
-- `@api-dev message` → Terminal 2
-- `message` (no prefix) → most recent session
+That's it. ~150 lines of bash. No daemon, no complexity.
 
 ## Commands
 
 ```bash
-lymebridge              # Run daemon
-lymebridge setup        # Interactive setup
-lymebridge connect <n>  # Connect session named <n>
-lymebridge version      # Show version
-lymebridge help         # Show help
+lymebridge setup    # Configure Telegram bot
+lymebridge bridge   # Bridge Telegram to current tmux pane
+lymebridge version  # Show version
+lymebridge help     # Show help
 ```
 
 ## License
