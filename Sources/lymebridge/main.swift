@@ -307,8 +307,9 @@ func runDaemon() {
         exit(1)
     }
 
+    let daemon = Daemon(config: config)
     do {
-        try Daemon(config: config).run()
+        try daemon.run()
     } catch {
         print("Error: \(error)")
         exit(1)
