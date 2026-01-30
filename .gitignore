@@ -10,5 +10,8 @@
 *.xcworkspace
 xcuserdata/
 
+# Local agent settings
+.claude/
+
 # Design documents (keep local only)
 docs/plans/
