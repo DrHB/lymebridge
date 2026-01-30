@@ -80,6 +80,19 @@ lymebridge bridge dev
 - Homebrew (for auto-installing dependencies)
 - Telegram account and bot token
 
+## Smoke test
+
+Quick local checks for syntax, dependencies, and config:
+
+```bash
+./scripts/smoke.sh
+```
+
+## Troubleshooting
+
+- Setup times out: send any message to your bot (from the account you plan to use) and re-run `lymebridge setup`.
+- No replies: verify you're bridging the correct tmux session and re-run `lymebridge setup` to refresh the chat ID.
+
 ## License
 
 MIT
