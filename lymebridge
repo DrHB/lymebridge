@@ -35,13 +35,27 @@ check_deps() {
             exit 1
         fi
     done
+    if ! command -v md5 &> /dev/null && ! command -v md5sum &> /dev/null; then
+        echo -e "${RED}Error: md5 or md5sum is required but not installed${NC}"
+        exit 1
+    fi
+}
+
+hash_text() {
+    if command -v md5 &> /dev/null; then
+        md5 -q
+    else
+        md5sum | awk '{print $1}'
+    fi
 }
 
 send_telegram() {
     local text="$1"
-    curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${CHAT_ID}" \
-        -d "text=${text}" > /dev/null 2>&1
+    if ! curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+        --data-urlencode "chat_id=${CHAT_ID}" \
+        --data-urlencode "text=${text}" > /dev/null; then
+        echo -e "${RED}[telegram send failed]${NC}" >&2
+    fi
 }
 
 # Monitor tmux output and send to Telegram
@@ -108,15 +122,15 @@ monitor_output() {
         # Wait for response to stabilize (Claude still typing?)
         sleep 1
         local hash_before
-        hash_before=$(tmux capture-pane -t "$target" -p -S -50 2>/dev/null | md5 2>/dev/null || echo "x")
+        hash_before=$(tmux capture-pane -t "$target" -p -S -50 2>/dev/null | hash_text 2>/dev/null || echo "x")
         sleep 1
         local hash_after
-        hash_after=$(tmux capture-pane -t "$target" -p -S -50 2>/dev/null | md5 2>/dev/null || echo "y")
+        hash_after=$(tmux capture-pane -t "$target" -p -S -50 2>/dev/null | hash_text 2>/dev/null || echo "y")
         [[ "$hash_before" != "$hash_after" ]] && continue
 
         # Hash response to detect changes
         local hash
-        hash=$(printf '%s' "$response" | md5 2>/dev/null || printf '%s' "$response" | md5sum | cut -d' ' -f1)
+        hash=$(printf '%s' "$response" | hash_text 2>/dev/null || printf 'x')
 
         if [[ "$hash" != "$last_hash" ]]; then
             local msg="${response:0:4000}"
@@ -138,7 +152,7 @@ run_setup() {
     echo "  2. Send /newbot and follow the prompts"
     echo "  3. Copy the bot token"
     echo ""
-    read -p "Enter your bot token: " BOT_TOKEN
+    read -r -p "Enter your bot token: " BOT_TOKEN
 
     if [[ -z "$BOT_TOKEN" ]]; then
         echo -e "${RED}Error: Bot token required${NC}"
@@ -167,8 +181,11 @@ run_setup() {
         fi
 
         echo -n "."
-        RESPONSE=$(curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?timeout=1")
-        CHAT_ID=$(echo "$RESPONSE" | jq -r '.result[-1].message.chat.id // empty')
+        if ! RESPONSE=$(curl -sS "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?timeout=1"); then
+            sleep 2
+            continue
+        fi
+        CHAT_ID=$(echo "$RESPONSE" | jq -r '.result[-1].message.chat.id // empty' 2>/dev/null || true)
 
         if [[ -z "$CHAT_ID" ]]; then
             sleep 2
@@ -236,8 +253,12 @@ run_bridge() {
         exit 1
     fi
 
-    BOT_TOKEN=$(jq -r '.botToken' "$CONFIG_FILE")
-    CHAT_ID=$(jq -r '.chatId' "$CONFIG_FILE")
+    BOT_TOKEN=$(jq -r '.botToken // empty' "$CONFIG_FILE" 2>/dev/null || true)
+    CHAT_ID=$(jq -r '.chatId // empty' "$CONFIG_FILE" 2>/dev/null || true)
+    if [[ -z "$BOT_TOKEN" || -z "$CHAT_ID" ]]; then
+        echo -e "${RED}Error: Config is missing botToken or chatId. Re-run 'lymebridge setup'.${NC}"
+        exit 1
+    fi
 
     echo "lymebridge v$VERSION"
     echo ""
@@ -252,12 +273,17 @@ run_bridge() {
 
     trap 'echo ""; echo "Bridge stopped."; kill $MONITOR_PID 2>/dev/null; exit 0' INT
 
-    LAST_UPDATE_ID=0
+    LAST_UPDATE_ID=$(curl -sS "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?limit=1&timeout=0" 2>/dev/null | \
+        jq -r '.result[-1].update_id // 0' 2>/dev/null || true)
+    LAST_UPDATE_ID=${LAST_UPDATE_ID:-0}
 
     while true; do
-        RESPONSE=$(curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=$((LAST_UPDATE_ID + 1))&timeout=30")
+        if ! RESPONSE=$(curl -sS "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=$((LAST_UPDATE_ID + 1))&timeout=30"); then
+            sleep 2
+            continue
+        fi
 
-        UPDATES=$(echo "$RESPONSE" | jq -c '.result[]?' 2>/dev/null)
+        UPDATES=$(echo "$RESPONSE" | jq -c '.result[]?' 2>/dev/null || true)
 
         while IFS= read -r update; do
             [[ -z "$update" ]] && continue
